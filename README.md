@@ -1,4 +1,5 @@
 # PROJECT COLLISION dengan Raylib C++
+Projek dibuat oleh Jeff Rehobot H L G - 5024241073
 Simulasi deteksi tabrakan bola 2D menggunakan tiga algoritma berbeda: Brute Force, QuadTree, dan Hybrid.
 Program dibuat menggunakan Raylib (C++), dan menampilkan visualisasi tabrakan fisika secara real-time dengan ratusan bola yang bergerak bebas.
 
