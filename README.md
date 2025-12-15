@@ -44,22 +44,34 @@ Panel informasi di sisi kiri (toggle dengan H) menampilkan:
 Program ini hanya memerlukan raylib dan compiler C++ seperti g++ atau clang++.
 
 # Penjelasan Algoritma
-Brute Force
-Setiap bola dibandingkan dengan semua bola lainnya.
-Paling sederhana, tapi paling lambat untuk jumlah besar.
+# Brute Force
 
-QuadTree
-Ruang dibagi menjadi node-node kecil.
-Bola hanya dibandingkan dengan bola dalam area terdekat.
-Lebih cepat dan efisien.
+Pada metode Brute Force, setiap bola dibandingkan dengan semua bola lainnya untuk mendeteksi tabrakan. Di dalam kode, hal ini dilakukan menggunakan dua perulangan bersarang, di mana bola ke-i akan dibandingkan dengan bola ke-(i+1) hingga bola terakhir. Untuk setiap pasangan bola, program menghitung jarak antar pusat bola dan menentukan apakah jarak tersebut lebih kecil dari jumlah radius kedua bola. Jika terjadi tabrakan, fungsi ResolveCollision dipanggil untuk memperbaiki posisi dan kecepatan bola.
 
-Hybrid
-QuadTree untuk mencari kelompok bola terdekat
-Dalam satu cluster: brute force tugas kecil
-Memberikan keseimbangan antara kecepatan dan akurasi.
+Pendekatan ini sangat sederhana dan mudah dipahami karena tidak menggunakan struktur data tambahan. Namun, jumlah pengecekan tabrakan meningkat sangat cepat ketika jumlah bola bertambah. Dengan banyak bola, metode ini menghasilkan sangat banyak collision check dalam satu frame, sehingga menyebabkan FPS turun. Sehingga, Brute Force dianjurkan untuk simulasi dengan jumlah objek yang kecil.
 
-# Screenshot
+# QuadTree
+
+Pada metode QuadTree, ruang simulasi dibagi menjadi beberapa area berbentuk persegi panjang. Setiap bola dimasukkan ke dalam QuadTree berdasarkan posisi koordinatnya. Jika jumlah bola dalam satu node melebihi kapasitas tertentu, node tersebut akan dibagi menjadi empat bagian yang lebih kecil. Proses ini dilakukan setiap frame ketika mode QuadTree aktif.
+
+Setelah QuadTree terbentuk, deteksi tabrakan tidak lagi dilakukan dengan membandingkan semua bola secara global. Untuk setiap bola, program hanya melakukan pencarian (Query) pada area di sekitar bola tersebut untuk mendapatkan daftar bola yang berdekatan. Hanya bola-bola dalam hasil query inilah yang kemudian dicek jaraknya dan diproses tabrakannya. Selain itu, kode memastikan bahwa setiap pasangan bola hanya diproses satu kali dengan membandingkan ID bola.
+
+Dengan membatasi pengecekan hanya pada bola yang lokasinya berdekatan, jumlah collision check berkurang drastis dibandingkan Brute Force. Hal ini membuat performa simulasi jauh lebih baik ketika jumlah bola besar, terutama jika bola tersebar merata di dalam ruang.
+
+# Hybrid
+
+Metode Hybrid merupakan gabungan antara QuadTree dan Brute Force. Pada metode ini, QuadTree digunakan sebagai tahap awal untuk mengelompokkan bola-bola yang berada dalam area tertentu. Setelah mendapatkan kelompok bola melalui proses query QuadTree, program melakukan brute force secara lokal di dalam kelompok tersebut.
+
+Pada implementasinya, hasil query diurutkan berdasarkan ID bola agar setiap pasangan bola hanya diproses satu kali. Brute force lokal kemudian digunakan untuk menyelesaikan tabrakan antar bola dalam kelompok kecil tersebut menggunakan fungsi ResolveCollision. Dengan cara ini, metode Hybrid tetap efisien karena ruang pencarian dibatasi oleh QuadTree, namun tetap akurat karena brute force digunakan pada skala kecil.
+
+Metode Hybrid memberikan keseimbangan terbaik antara performa dan kestabilan simulasi, terutama pada kondisi kepadatan bola yang tinggi. Jumlah collision check lebih kecil dibandingkan Brute Force, dan lebih stabil dibandingkan QuadTree murni pada area yang sangat padat.
+
+# Lampiran
+Screenshot program
 <img width="1393" height="920" alt="image" src="https://github.com/user-attachments/assets/dda51ff5-7e8a-4d03-b11e-eec978c4b98a" />
+Video
+![VideoObjectCollision-ezgif com-gif-maker](https://github.com/user-attachments/assets/84155ede-033c-4fb2-a2d4-a4525f5bc817)
+
 
 # Kesimpulan
 Proyek ini berhasil menunjukkan perbedaan performa dan karakteristik antara Brute Force, QuadTree, dan Hybrid.
