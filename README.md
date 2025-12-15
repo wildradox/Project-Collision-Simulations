@@ -68,7 +68,7 @@ Metode Hybrid memberikan keseimbangan terbaik antara performa dan kestabilan sim
 
 # Lampiran
 Screenshot program
-<img width="1393" height="920" alt="image" src="https://github.com/user-attachments/assets/dda51ff5-7e8a-4d03-b11e-eec978c4b98a" />
+<img width="1387" height="858" alt="Screenshot 2025-12-15 104018" src="https://github.com/user-attachments/assets/6fa8ca18-0b40-4c8e-a1e4-818077d1669e" />
 Video
 ![VideoObjectCollision-ezgif com-gif-maker](https://github.com/user-attachments/assets/84155ede-033c-4fb2-a2d4-a4525f5bc817)
 
