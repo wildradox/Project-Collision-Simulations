@@ -44,15 +44,18 @@ class QuadTree {
 public:
     Rect box;
     int capacity;
+    int depth;
     bool split = false;
+    static const int MAX_DEPTH = 6;
 
     std::vector<int> ids;
 
     QuadTree *nw=nullptr, *ne=nullptr;
     QuadTree *sw=nullptr, *se=nullptr;
 
-    QuadTree(Rect r, int cap) : box(r), capacity(cap) {}
-    ~QuadTree(){ Clear(); }
+    QuadTree(Rect r, int cap, int d = 0)
+    : box(r), capacity(cap), depth(d) {}
+
 
     void Clear() {
         ids.clear();
@@ -69,11 +72,12 @@ public:
         float y = box.cy;
         float hw = box.halfW / 2;
         float hh = box.halfH / 2;
+        if (depth >= MAX_DEPTH) return;
 
-        nw = new QuadTree({x - hw, y - hh, hw, hh}, capacity);
-        ne = new QuadTree({x + hw, y - hh, hw, hh}, capacity);
-        sw = new QuadTree({x - hw, y + hh, hw, hh}, capacity);
-        se = new QuadTree({x + hw, y + hh, hw, hh}, capacity);
+        nw = new QuadTree({x - hw, y - hh, hw, hh}, capacity, depth + 1);
+        ne = new QuadTree({x + hw, y - hh, hw, hh}, capacity, depth + 1);
+        sw = new QuadTree({x - hw, y + hh, hw, hh}, capacity, depth + 1);
+        se = new QuadTree({x + hw, y + hh, hw, hh}, capacity, depth + 1);
 
         split = true;
     }
@@ -121,6 +125,24 @@ public:
             sw->Draw(); se->Draw();
         }
     }
+    void GetAllPairs(const std::vector<Ball>& balls,
+                 std::vector<std::pair<int,int>>& pairs) const
+{
+    // Brute force kecil dalam satu node
+    for (size_t i = 0; i < ids.size(); ++i) {
+        for (size_t j = i + 1; j < ids.size(); ++j) {
+            pairs.emplace_back(ids[i], ids[j]);
+        }
+    }
+
+    if (split) {
+        nw->GetAllPairs(balls, pairs);
+        ne->GetAllPairs(balls, pairs);
+        sw->GetAllPairs(balls, pairs);
+        se->GetAllPairs(balls, pairs);
+    }
+}
+
 };
 
 /* Tabrakan bola
@@ -175,6 +197,48 @@ void ResolveCollision(Ball &A, Ball &B) {
     }
 }
 
+Ball SpawnBallAtCursor(const std::vector<Ball>& balls, Vector2 mouse, int screenW, int screenH) {
+    Ball b;
+    b.radius = RandomFloat(3.0f, 7.0f);
+
+    b.posX = std::max(b.radius, std::min(mouse.x, screenW - b.radius));
+    b.posY = std::max(b.radius, std::min(mouse.y, screenH - b.radius));
+
+    // Cegah overlap: geser sedikit kalau nabrak bola lain
+    for (const auto& o : balls) {
+        float dx = b.posX - o.posX;
+        float dy = b.posY - o.posY;
+        float dist = sqrtf(dx*dx + dy*dy);
+        float minDist = b.radius + o.radius;
+
+        if (dist < minDist && dist > 0.0001f) {
+            float nx = dx / dist;
+            float ny = dy / dist;
+            float push = minDist - dist + 1.0f;
+            b.posX += nx * push;
+            b.posY += ny * push;
+        }
+    }
+
+    // Kecepatan random
+    b.velX = RandomFloat(-180.0f, 180.0f);
+    b.velY = RandomFloat(-180.0f, 180.0f);
+
+    if (fabs(b.velX) < 30) b.velX += (b.velX < 0 ? -30 : 30);
+    if (fabs(b.velY) < 30) b.velY += (b.velY < 0 ? -30 : 30);
+
+    // Warna random
+    b.color = {
+        (unsigned char)(rand()%256),
+        (unsigned char)(rand()%256),
+        (unsigned char)(rand()%256),
+        255
+    };
+
+    return b;
+}
+
+
 int main() {
     srand((unsigned int)time(NULL));
 
@@ -183,7 +247,7 @@ int main() {
     InitWindow(screenW, screenH, "PROJECT COLLISION — FINAL");
     SetTargetFPS(60);
 
-    const int BALL_COUNT = 350;
+    int BALL_COUNT = 1000;
     std::vector<Ball> balls;
     balls.reserve(BALL_COUNT);
 
@@ -256,6 +320,12 @@ int main() {
         if (IsKeyPressed(KEY_Q)) mode = MODE_QUAD;
         if (IsKeyPressed(KEY_T)) mode = MODE_HYBRID;
 
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        Vector2 mouse = GetMousePosition();
+        balls.push_back(SpawnBallAtCursor(balls, mouse, screenW, screenH));
+        BALL_COUNT++;
+        }
+
         float dt = GetFrameTime() * speedScale;
         checkCount = 0;
 
@@ -289,7 +359,7 @@ int main() {
                 if (frameQT) { delete frameQT; frameQT = nullptr; }
 
                 Rect world = { screenW/2.0f, screenH/2.0f, screenW/2.0f, screenH/2.0f };
-                frameQT = new QuadTree(world, 6);
+                frameQT = new QuadTree(world, 12);
 
                 for (int i = 0; i < BALL_COUNT; ++i) {
                     frameQT->Insert(i, balls[i].posX, balls[i].posY);
@@ -320,28 +390,16 @@ int main() {
                 }
             }
             else { 
-                for (int i = 0; i < BALL_COUNT; ++i) {
-                    Rect q = { balls[i].posX, balls[i].posY, 35.0f, 35.0f };
-                    std::vector<int> found;
-                    frameQT->Query(q, found);
-
-                    // Sort found to make id ordering consistent (helps avoid duplicates)
-                    std::sort(found.begin(), found.end());
-
-                    for (size_t a = 0; a < found.size(); ++a) {
-                        for (size_t b = a + 1; b < found.size(); ++b) {
-                            int idA = found[a];
-                            int idB = found[b];
-                            // only process each unordered pair once using id comparison
-                            if (idA < idB) {
-                                ++checkCount;
-                                ResolveCollision(balls[idA], balls[idB]);
-                            }
-                        }
-                    }
+                std::vector<std::pair<int,int>> collisionPairs;
+                collisionPairs.reserve(BALL_COUNT * 4);
+                frameQT->GetAllPairs(balls, collisionPairs);
+                for (auto& p : collisionPairs) {
+                    ++checkCount;
+                    ResolveCollision(balls[p.first], balls[p.second]);
                 }
-            } 
+            }
         }
+
         BeginDrawing();
         ClearBackground(BLACK);
 
@@ -389,6 +447,8 @@ int main() {
             DrawText("SPACE = Pause", 20, y, 18, WHITE); y += 20;
             DrawText("Z = Slow Motion", 20, y, 18, WHITE); y += 20;
             DrawText("X = Normal Speed", 20, y, 18, WHITE); y += 40;
+            DrawText("LMB = Spawn Ball", 20, y, 18, WHITE); y += 40;
+
 
             DrawText("STATS:", 20, y, 20, WHITE); 
             y += 25;
